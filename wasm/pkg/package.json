@@ -1,0 +1,23 @@
+{
+  "name": "example",
+  "collaborators": [
+    "hazae41 <hazae41@proton.me>"
+  ],
+  "description": "An example Snap written in Rust",
+  "version": "1.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/example"
+  },
+  "files": [
+    "example_bg.wasm",
+    "example.js",
+    "example.d.ts"
+  ],
+  "module": "example.js",
+  "types": "example.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
