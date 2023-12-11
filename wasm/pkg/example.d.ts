@@ -10,6 +10,10 @@ export class Snap {
 */
   constructor(context: any);
 /**
+* @param {string} text
+*/
+  log(text: string): void;
+/**
 * @param {string} request
 * @returns {string}
 */
@@ -22,10 +26,11 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_snap_free: (a: number) => void;
   readonly snap_new: (a: number) => number;
+  readonly snap_log: (a: number, b: number, c: number, d: number) => void;
   readonly snap_on_request: (a: number, b: number, c: number, d: number) => void;
-  readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
 }
 

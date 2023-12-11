@@ -6,7 +6,21 @@ await test("test", async () => {
 
   const snap = new Snap({
     log(text: string) {
-      console.log("[snap]", text)
+      console.log(text)
+    },
+    request(request: string) {
+      const req = JSON.parse(request)
+
+      if (req.method === "snap_log") {
+        console.log(req.params[0])
+        return JSON.stringify({})
+      }
+
+      return JSON.stringify({
+        error: {
+          message: "Unknown method"
+        }
+      })
     }
   })
 
@@ -15,8 +29,8 @@ await test("test", async () => {
   }
 
   const response = request({
-    method: "hello",
-    params: ["world"]
+    method: "echo",
+    params: ["Hello world!"]
   })
 
   console.log(response)

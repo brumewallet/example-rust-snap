@@ -2,10 +2,11 @@
 
 extern crate alloc;
 
-use alloc::{
-    format,
-    string::{String, ToString},
-};
+use alloc::format;
+use alloc::string::{String, ToString};
+use alloc::vec;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use wasm_bindgen::prelude::*;
 
@@ -14,7 +15,30 @@ extern "C" {
     pub type Context;
 
     #[wasm_bindgen(method)]
-    fn log(this: &Context, text: &str);
+    fn request(this: &Context, request: &str) -> String;
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct RpcRequest {
+    pub(crate) method: String,
+    pub(crate) params: Value,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum RpcResponse<T> {
+    Err(RpcErr),
+    Ok(RpcOk<T>),
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct RpcOk<T> {
+    pub(crate) result: T,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct RpcErr {
+    pub(crate) error: Value,
 }
 
 #[wasm_bindgen]
@@ -29,40 +53,46 @@ impl Snap {
         Snap { context }
     }
 
+    fn request<T: DeserializeOwned>(&self, request: &Value) -> Result<T, JsError> {
+        let json = self.context.request(&request.to_string());
+        let value = serde_json::from_str::<RpcResponse<T>>(&json)?;
+
+        match value {
+            RpcResponse::Ok(ok) => Ok(ok.result),
+            RpcResponse::Err(err) => Err(JsError::new(err.error.to_string().as_str())),
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn log(&self, text: &str) -> Result<(), JsError> {
+        self.request::<Option<()>>(&json!({
+          "method": "snap_log",
+          "params": [text]
+        }))?;
+
+        Ok(())
+    }
+
     #[wasm_bindgen]
     pub fn on_request(&self, request: &str) -> Result<String, JsError> {
-        self.context.log(format!("on_request {}", request).as_str());
+        self.log(format!("on_request {}", request).as_str())?;
 
-        let req = serde_json::from_str::<Value>(request)?;
+        let req = serde_json::from_str::<RpcRequest>(request)?;
 
-        let method = req
-            .as_object()
-            .unwrap_throw()
-            .get("method")
-            .unwrap_throw()
-            .as_str()
-            .unwrap_throw();
-
-        match method {
-            "hello" => Ok(self.on_hello(&req)?.to_string()),
+        match req.method.as_str() {
+            "echo" => Ok(self.on_echo(req)?.to_string()),
             _ => Err(JsError::new("Unknown method")),
         }
     }
 
-    fn on_hello(&self, req: &Value) -> Result<Value, JsError> {
-        let params = req.get("params").unwrap_throw();
+    fn on_echo(&self, req: RpcRequest) -> Result<Value, JsError> {
+        #[derive(Serialize, Deserialize)]
+        pub(crate) struct Echo((String,));
 
-        let message = params
-            .as_array()
-            .unwrap_throw()
-            .get(0)
-            .unwrap_throw()
-            .as_str()
-            .unwrap_throw();
+        let Echo((message,)) = serde_json::from_str::<Echo>(&req.params.to_string())?;
 
-        match message {
-            "world" => Ok(json!("Hello world")),
-            _ => Err(JsError::new("Unknown message")),
-        }
+        self.log(&message)?;
+
+        Ok(json!(message))
     }
 }
